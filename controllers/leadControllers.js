@@ -1,12 +1,6 @@
 import xlsx from "xlsx";
 import LeadsModel from "../models/leadModel.js";
 
-// create leads via .csv and excel
-
-import xlsx from "xlsx";
-import LeadsModel from "../models/leadModel.js";
-
-// PATCH leads from Excel file based on Email or Phone
 export const uploadLeadsFromExcel = async (req, res) => {
     try {
         if (!req.file) {
@@ -22,15 +16,12 @@ export const uploadLeadsFromExcel = async (req, res) => {
         let skipped = 0;
 
         for (const row of rows) {
-            // 🔄 Replace 'LeadID' with your matching column
-            const filterField = row.LeadID;
+            const id = row._id?.toString();
 
-            if (!filterField) {
+            if (!id) {
                 skipped++;
                 continue;
             }
-
-            const filter = { LeadID: row.LeadID };
 
             const patchFields = {
                 ...(row.AssignedTeleoperatore && { AssignedTeleoperatore: row.AssignedTeleoperatore }),
@@ -40,7 +31,7 @@ export const uploadLeadsFromExcel = async (req, res) => {
                 updatedAt: new Date()
             };
 
-            const updated = await LeadsModel.findOneAndUpdate(filter, patchFields, {
+            const updated = await LeadsModel.findByIdAndUpdate(id, patchFields, {
                 new: true
             });
 
@@ -48,16 +39,17 @@ export const uploadLeadsFromExcel = async (req, res) => {
         }
 
         res.status(200).json({
-            message: "Excel PATCH completed",
+            message: "Excel PATCH completed using _id",
             updated: updatedCount,
             skipped
         });
 
     } catch (error) {
-        console.error("Excel Upload Error:", error);
+        console.error("Excel PATCH Error:", error);
         res.status(500).json({ message: "Failed to patch leads", error: error.message });
     }
 };
+
 
 
 export const getAllLeads = async (req, res) => {
