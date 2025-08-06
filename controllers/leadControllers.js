@@ -17,7 +17,7 @@ export const uploadLeadsFromExcel = async (req, res) => {
         let skipped = 0;
 
         for (const row of rows) {
-            const id = row._id?.toString();
+            const id = row._id && mongoose.Types.ObjectId.isValid(row._id) ? row._id.toString() : null;
 
             const leadData = {
                 ...(row.AssignedTeleoperatore && { AssignedTeleoperatore: row.AssignedTeleoperatore }),
@@ -28,16 +28,15 @@ export const uploadLeadsFromExcel = async (req, res) => {
                 updatedAt: new Date()
             };
 
+            console.log(id ? "Updating Lead:" : "Creating Lead:", leadData);
+
             if (id) {
                 const updated = await LeadsModel.findByIdAndUpdate(id, leadData, {
-                    new: true
+                    new: true,
+                    upsert: false
                 });
 
-                if (updated) {
-                    updatedCount++;
-                } else {
-                    skipped++;
-                }
+                updated ? updatedCount++ : skipped++;
             } else {
                 await LeadsModel.create(leadData);
                 createdCount++;
@@ -56,6 +55,7 @@ export const uploadLeadsFromExcel = async (req, res) => {
         res.status(500).json({ message: "Failed to process leads", error: error.message });
     }
 };
+
 
 
 
