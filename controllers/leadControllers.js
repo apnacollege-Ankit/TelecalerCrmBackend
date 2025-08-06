@@ -12,43 +12,51 @@ export const uploadLeadsFromExcel = async (req, res) => {
         const sheet = workbook.Sheets[sheetName];
         const rows = xlsx.utils.sheet_to_json(sheet);
 
+        let createdCount = 0;
         let updatedCount = 0;
         let skipped = 0;
 
         for (const row of rows) {
             const id = row._id?.toString();
 
-            if (!id) {
-                skipped++;
-                continue;
-            }
-
-            const patchFields = {
+            const leadData = {
                 ...(row.AssignedTeleoperatore && { AssignedTeleoperatore: row.AssignedTeleoperatore }),
                 ...(row.AssignedSalesperson && { AssignedSalesperson: row.AssignedSalesperson }),
                 ...(row.TelecomsRemark && { TelecomsRemark: row.TelecomsRemark }),
                 ...(row.SalesRemarks && { SalesRemarks: row.SalesRemarks }),
+                createdBy: req.user?.name || "system",
                 updatedAt: new Date()
             };
 
-            const updated = await LeadsModel.findByIdAndUpdate(id, patchFields, {
-                new: true
-            });
+            if (id) {
+                const updated = await LeadsModel.findByIdAndUpdate(id, leadData, {
+                    new: true
+                });
 
-            updated ? updatedCount++ : skipped++;
+                if (updated) {
+                    updatedCount++;
+                } else {
+                    skipped++;
+                }
+            } else {
+                await LeadsModel.create(leadData);
+                createdCount++;
+            }
         }
 
         res.status(200).json({
-            message: "Excel PATCH completed using _id",
+            message: "Excel Upload Completed (Create + Patch)",
+            created: createdCount,
             updated: updatedCount,
             skipped
         });
 
     } catch (error) {
-        console.error("Excel PATCH Error:", error);
-        res.status(500).json({ message: "Failed to patch leads", error: error.message });
+        console.error("Excel Upload Error:", error);
+        res.status(500).json({ message: "Failed to process leads", error: error.message });
     }
 };
+
 
 
 
