@@ -3,35 +3,62 @@ import LeadsModel from "../models/leadModel.js";
 
 // create leads via .csv and excel
 
+import xlsx from "xlsx";
+import LeadsModel from "../models/leadModel.js";
+
+// PATCH leads from Excel file based on Email or Phone
 export const uploadLeadsFromExcel = async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ message: "No file uploaded" });
         }
 
-        // Parse Excel file buffer
         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rows = xlsx.utils.sheet_to_json(sheet); // auto handles dynamic headers
+        const rows = xlsx.utils.sheet_to_json(sheet);
 
-        const leads = rows.map(row => ({
-            ...row,
-            AssignedTeleoperatore: row.AssignedTeleoperatore || "",
-            AssignedSalesperson: row.AssignedSalesperson || "",
-            TelecomsRemark: row.TelecomsRemark || "",
-            SalesRemarks: row.SalesRemarks || "",
-            createdBy: req.user?.name || "system"
-        }));
+        let updatedCount = 0;
+        let skipped = 0;
 
-        const savedLeads = await LeadsModel.insertMany(leads);
+        for (const row of rows) {
+            // 🔄 Replace 'LeadID' with your matching column
+            const filterField = row.LeadID;
 
-        res.status(200).json({ message: "Leads uploaded successfully", count: savedLeads.length });
+            if (!filterField) {
+                skipped++;
+                continue;
+            }
+
+            const filter = { LeadID: row.LeadID };
+
+            const patchFields = {
+                ...(row.AssignedTeleoperatore && { AssignedTeleoperatore: row.AssignedTeleoperatore }),
+                ...(row.AssignedSalesperson && { AssignedSalesperson: row.AssignedSalesperson }),
+                ...(row.TelecomsRemark && { TelecomsRemark: row.TelecomsRemark }),
+                ...(row.SalesRemarks && { SalesRemarks: row.SalesRemarks }),
+                updatedAt: new Date()
+            };
+
+            const updated = await LeadsModel.findOneAndUpdate(filter, patchFields, {
+                new: true
+            });
+
+            updated ? updatedCount++ : skipped++;
+        }
+
+        res.status(200).json({
+            message: "Excel PATCH completed",
+            updated: updatedCount,
+            skipped
+        });
+
     } catch (error) {
         console.error("Excel Upload Error:", error);
-        res.status(500).json({ message: "Failed to upload leads", error: error.message });
+        res.status(500).json({ message: "Failed to patch leads", error: error.message });
     }
 };
+
 
 export const getAllLeads = async (req, res) => {
     try {
