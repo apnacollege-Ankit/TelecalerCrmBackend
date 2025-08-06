@@ -26,7 +26,7 @@ router.post("/create-login", createlogin);
 router.post("/create-Company", svgUpload.single('logo'),createCompany);
 router.get("/allCompany", getCompany);
 
-router.post("/leads",  excelUpload.single("file"), uploadLeadsFromExcel);
+router.post("/tl/upload",  excelUpload.single("file"), uploadLeadsFromExcel);
 
 router.get("/allLead",  getAllLeads);
 
