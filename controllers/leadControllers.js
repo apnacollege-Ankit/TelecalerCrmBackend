@@ -17,6 +17,10 @@ export const uploadLeadsFromExcel = async (req, res) => {
 
         const leads = rows.map(row => ({
             ...row,
+            AssignedTeleoperatore: row.AssignedTeleoperatore || "",
+            AssignedSalesperson: row.AssignedSalesperson || "",
+            TelecomsRemark: row.TelecomsRemark || "",
+            SalesRemarks: row.SalesRemarks || "",
             createdBy: req.user?.name || "system"
         }));
 
