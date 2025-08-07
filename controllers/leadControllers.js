@@ -3,41 +3,77 @@ import xlsx from "xlsx";
 import LeadsModel from "../models/leadModel.js";
 
 // create leads via .csv and excel
+// export const uploadLeadsFromExcel = async (req, res) => {
+//     try {
+//         if (!req.file) {
+//             return res.status(400).json({ message: "No file uploaded" });
+//         }
+
+//         // Parse Excel file buffer
+//         const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+//         const sheetName = workbook.SheetNames[0];
+//         const sheet = workbook.Sheets[sheetName];
+//         const rows = xlsx.utils.sheet_to_json(sheet); // auto handles dynamic headers
+
+//         const allowedFields = [
+//             "AssignedTeleoperatore",
+//             "AssignedSalesperson",
+//             "TelecomsRemark",
+//             "SalesRemarks"
+//         ];
+//         const leads = rows.map(row => {
+//             const filtered = {};
+//             allowedFields.forEach(field => {
+//                 filtered[field] = row[field] || "";
+//             });
+//             filtered.createdBy = req.user?.name || "system";
+//             return filtered;
+//         });
+
+//         const savedLeads = await LeadsModel.insertMany(leads);
+
+//         res.status(200).json({ message: "Leads uploaded successfully", count: savedLeads.length });
+//     } catch (error) {
+//         console.error("Excel Upload Error:", error);
+//         res.status(500).json({ message: "Failed to upload leads", error: error.message });
+//     }
+// };
+
 export const uploadLeadsFromExcel = async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ message: "No file uploaded" });
-        }
-
-        // Parse Excel file buffer
-        const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = xlsx.utils.sheet_to_json(sheet); // auto handles dynamic headers
-
-        const allowedFields = [
-            "AssignedTeleoperatore",
-            "AssignedSalesperson",
-            "TelecomsRemark",
-            "SalesRemarks"
-        ];
-        const leads = rows.map(row => {
-            const filtered = {};
-            allowedFields.forEach(field => {
-                filtered[field] = row[field] || "";
-            });
-            filtered.createdBy = req.user?.name || "system";
-            return filtered;
-        });
-
-        const savedLeads = await LeadsModel.insertMany(leads);
-
-        res.status(200).json({ message: "Leads uploaded successfully", count: savedLeads.length });
-    } catch (error) {
-        console.error("Excel Upload Error:", error);
-        res.status(500).json({ message: "Failed to upload leads", error: error.message });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
+
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    console.log("Parsed Excel Rows:", rows); // 👀 Inspect this in logs
+
+    const leads = rows.map((row) => ({
+      AssignedTeleoperatore: row["AssignedTeleoperatore"] || "",
+      AssignedSalesperson: row["AssignedSalesperson"] || "",
+      TelecomsRemark: row["TelecomsRemark"] || "",
+      SalesRemarks: row["SalesRemarks"] || "",
+      createdBy: req.user?.name || "system",
+    }));
+
+    const savedLeads = await LeadsModel.insertMany(leads);
+
+    res.status(200).json({
+      message: "Leads uploaded successfully",
+      count: savedLeads.length,
+    });
+  } catch (error) {
+    console.error("Excel Upload Error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to upload leads", error: error.message });
+  }
 };
+
 
 
 export const getAllLeads = async (req, res) => {
