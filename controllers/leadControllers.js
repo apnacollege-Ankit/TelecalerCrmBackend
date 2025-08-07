@@ -45,20 +45,38 @@ export const uploadLeadsFromExcel = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
+    // Read Excel file
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const rows = xlsx.utils.sheet_to_json(sheet);
 
-    console.log("Parsed Excel Rows:", rows); // 👀 Inspect this in logs
+    console.log("📄 Parsed Excel Rows:", rows);
 
-    const leads = rows.map((row) => ({
-      AssignedTeleoperatore: row["AssignedTeleoperatore"] || "",
-      AssignedSalesperson: row["AssignedSalesperson"] || "",
-      TelecomsRemark: row["TelecomsRemark"] || "",
-      SalesRemarks: row["SalesRemarks"] || "",
-      createdBy: req.user?.name || "system",
-    }));
+    // Normalize column headers (e.g., "assigned salesperson" → "AssignedSalesperson")
+    const normalizeKey = (key) => key?.trim().toLowerCase().replace(/\s+/g, "");
+
+    const allowedFieldsMap = {
+      assignedteleoperatore: "AssignedTeleoperatore",
+      assignedsalesperson: "AssignedSalesperson",
+      telecomsremark: "TelecomsRemark",
+      salesremarks: "SalesRemarks",
+    };
+
+    const leads = rows.map((row) => {
+      const lead = {};
+      for (let key in row) {
+        const normalized = normalizeKey(key);
+        const mappedKey = allowedFieldsMap[normalized];
+        if (mappedKey) {
+          lead[mappedKey] = row[key] || "";
+        }
+      }
+      lead.createdBy = req.user?.name || "system";
+      return lead;
+    });
+
+    console.log("📝 Final Leads to Save:", leads);
 
     const savedLeads = await LeadsModel.insertMany(leads);
 
@@ -67,10 +85,11 @@ export const uploadLeadsFromExcel = async (req, res) => {
       count: savedLeads.length,
     });
   } catch (error) {
-    console.error("Excel Upload Error:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to upload leads", error: error.message });
+    console.error("❌ Excel Upload Error:", error);
+    res.status(500).json({
+      message: "Failed to upload leads",
+      error: error.message,
+    });
   }
 };
 
