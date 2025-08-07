@@ -56,22 +56,23 @@ export const uploadLeadsFromExcel = async (req, res) => {
     // Normalize column headers (e.g., "assigned salesperson" → "AssignedSalesperson")
     const normalizeKey = (key) => key?.trim().toLowerCase().replace(/\s+/g, "");
 
-    const allowedFieldsMap = {
-      assignedteleoperatore: "AssignedTeleoperatore",
-      assignedsalesperson: "AssignedSalesperson",
-      telecomsremark: "TelecomsRemark",
-      salesremarks: "SalesRemarks",
-    };
+    const requiredFields = [
+      "AssignedTeleoperatore",
+      "AssignedSalesperson",
+      "TelecomsRemark",
+      "SalesRemarks"
+    ];
 
-    const leads = rows.map((row) => {
-      const lead = {};
-      for (let key in row) {
-        const normalized = normalizeKey(key);
-        const mappedKey = allowedFieldsMap[normalized];
-        if (mappedKey) {
-          lead[mappedKey] = row[key] || "";
+     const leads = rows.map((row) => {
+      const lead = { ...row };
+
+      // ✅ Ensure required fields are present, even if missing in Excel
+      requiredFields.forEach((field) => {
+        if (!(field in lead)) {
+          lead[field] = ""; // Set blank if missing
         }
-      }
+      });
+
       lead.createdBy = req.user?.name || "system";
       return lead;
     });
